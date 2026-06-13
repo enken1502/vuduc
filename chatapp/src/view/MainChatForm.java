@@ -8,19 +8,19 @@ public class MainChatForm extends JFrame {
     public MainChatForm() {
 
         setTitle("Chat App");
-        setSize(1000,600);
+        setSize(1000, 600);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         // Danh sách bạn bè
-        String[] friends = {
+        String[] friendsData = {
                 "Nguyễn Văn A (Online)",
                 "Trần Văn B (Offline)",
                 "Nhóm Java",
                 "Nhóm CNTT"
         };
 
-        JList<String> friendList = new JList<>(friends);
+        JList<String> friendList = new JList<>(friendsData);
 
         // Khu vực chat
         JTextArea chatArea = new JTextArea();
@@ -49,30 +49,50 @@ public class MainChatForm extends JFrame {
         add(new JScrollPane(chatArea), BorderLayout.CENTER);
         add(bottomPanel, BorderLayout.SOUTH);
 
+        // Gửi tin nhắn
         btnSend.addActionListener(e -> {
             String msg = txtMessage.getText();
 
-            if(!msg.isEmpty()) {
+            if (!msg.isEmpty()) {
                 chatArea.append("Tôi: " + msg + "\n");
                 txtMessage.setText("");
             }
         });
+
+        // MENU
         JMenuBar menuBar = new JMenuBar();
 
-JMenu menu = new JMenu("Tài khoản");
+        JMenu menu = new JMenu("Menu");
 
-JMenuItem profileItem = new JMenuItem("Thông tin cá nhân");
-JMenuItem friendItem = new JMenuItem("Bạn bè");
-JMenuItem logoutItem = new JMenuItem("Đăng xuất");
+        JMenuItem profile = new JMenuItem("Thông tin cá nhân");
+        JMenuItem friends = new JMenuItem("Bạn bè");
+        JMenuItem createGroup = new JMenuItem("Tạo nhóm");
+        JMenuItem joinGroup = new JMenuItem("Tham gia nhóm");
+        JMenuItem logout = new JMenuItem("Đăng xuất");
 
-menu.add(profileItem);
-menu.add(friendItem);
-menu.addSeparator();
-menu.add(logoutItem);
+        profile.addActionListener(e -> new ProfileForm());
 
-menuBar.add(menu);
+        friends.addActionListener(e -> new FriendForm());
 
-setJMenuBar(menuBar);
+        createGroup.addActionListener(e -> new CreateGroupForm());
+
+        joinGroup.addActionListener(e -> new JoinGroupForm());
+
+        logout.addActionListener(e -> {
+            new LoginForm();
+            dispose();
+        });
+
+        menu.add(profile);
+        menu.add(friends);
+        menu.add(createGroup);
+        menu.add(joinGroup);
+        menu.addSeparator();
+        menu.add(logout);
+
+        menuBar.add(menu);
+
+        setJMenuBar(menuBar);
 
         setVisible(true);
     }
