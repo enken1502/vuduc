@@ -1,7 +1,7 @@
 package view;
 
-import javax.swing.*;
 import java.awt.*;
+import javax.swing.*;
 
 public class MainChatForm extends JFrame {
 
@@ -51,9 +51,13 @@ public class MainChatForm extends JFrame {
 
         // Gửi tin nhắn
         btnSend.addActionListener(e -> {
-            String msg = txtMessage.getText();
+            String msg = txtMessage.getText().trim();
 
             if (!msg.isEmpty()) {
+                // 1. Gửi chuỗi lên Server qua Socket chung
+                view.ClientSocketManager.getInstance().sendRequest("CHAT;" + msg);
+                
+                // 2. Hiển thị lên màn hình chat của mình
                 chatArea.append("Tôi: " + msg + "\n");
                 txtMessage.setText("");
             }
@@ -95,5 +99,32 @@ public class MainChatForm extends JFrame {
         setJMenuBar(menuBar);
 
         setVisible(true);
+
+        // -----------------------------------------------------------------
+        // LUỒNG NGHE TIN NHẮN REAL-TIME TỪ SERVER ĐẨY VỀ
+        // -----------------------------------------------------------------
+        new Thread(() -> {
+            try {
+                while (true) {
+                    // Liên tục đứng đợi đọc tin nhắn từ Server gửi xuống
+                    String response = view.ClientSocketManager.getInstance().receiveResponse();
+                    
+                    if (response != null) {
+                        // Giả sử Server gửi tin nhắn tới theo cấu trúc: RECEIVE_MSG;<Người_gửi>;<Nội_dung>
+                        String[] data = response.split(";");
+                        
+                        if (data[0].equals("RECEIVE_MSG")) {
+                            String sender = data[1];
+                            String content = data[2];
+                            
+                            // Đẩy tin nhắn vừa nhận lên khung hiển thị chatArea
+                            chatArea.append(sender + ": " + content + "\n");
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("Lỗi luồng nhận tin nhắn: " + ex.getMessage());
+            }
+        }).start(); // Kích hoạt Thread chạy ngầm song song với giao diện
     }
 }
