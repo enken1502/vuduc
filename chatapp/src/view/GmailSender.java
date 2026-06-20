@@ -11,7 +11,8 @@ import javax.net.ssl.SSLSocketFactory;
 public class GmailSender {
     // 🌟 ĐIỀN EMAIL CỦA BẠN VÀ MẬT KHẨU ỨNG DỤNG 16 KÝ TỰ VÀO ĐÂY
     private static final String EMAIL_SENDER = "vduc2503@gmail.com";
-    private static final String EMAIL_APP_PASSWORD = "iyyxxlrvemnuzkoz"; // Viết liền 16 ký tự không dấu cách
+    // Sửa từ "iyxxlrvemnuzkoz" thành chuỗi đầy đủ 16 ký tự dưới đây:
+private static final String EMAIL_APP_PASSWORD = "iyyx xrlv emnu zkoz";//
 
     public static String generateOTP() {
         Random random = new Random();
@@ -20,60 +21,59 @@ public class GmailSender {
 
     public static boolean sendOTP(String recipientEmail, String otpCode) {
         String smtpHost = "smtp.gmail.com";
-        int smtpPort = 465; // Cổng SSL bảo mật của Google SMTP
+        int smtpPort = 465; 
 
-        // Sử dụng SSLSocket để kết nối bảo mật trực tiếp với Google
         try (Socket socket = SSLSocketFactory.getDefault().createSocket(smtpHost, smtpPort);
-             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
              OutputStream out = socket.getOutputStream()) {
 
-            // Đọc dòng chào mừng đầu tiên từ Server Google (Mã 220)
             readResponse(in);
 
-            // 1. Gửi lệnh EHLO để chào hỏi Server
             sendCmd(out, "EHLO " + smtpHost);
             readResponse(in);
 
-            // 2. Gửi yêu cầu Đăng nhập bằng AUTH LOGIN
             sendCmd(out, "AUTH LOGIN");
             readResponse(in);
 
-            // 3. Gửi Username (Email của bạn) đã được mã hóa Base64
             String base64User = Base64.getEncoder().encodeToString(EMAIL_SENDER.getBytes());
             sendCmd(out, base64User);
             readResponse(in);
 
-            // 4. Gửi Mật khẩu ứng dụng đã được mã hóa Base64
             String base64Pass = Base64.getEncoder().encodeToString(EMAIL_APP_PASSWORD.getBytes());
             sendCmd(out, base64Pass);
-            readResponse(in); // Nếu đăng nhập thành công sẽ trả về mã 235
+            readResponse(in); 
 
-            // 5. Khai báo Email người gửi
             sendCmd(out, "MAIL FROM:<" + EMAIL_SENDER + ">");
             readResponse(in);
 
-            // 6. Khai báo Email người nhận (Email đăng ký)
             sendCmd(out, "RCPT TO:<" + recipientEmail + ">");
             readResponse(in);
 
-            // 7. Gửi lệnh DATA để chuẩn bị viết nội dung Email
             sendCmd(out, "DATA");
-            readResponse(in); // Nhận mã 354 để bắt đầu truyền nội dung
+            readResponse(in); 
 
-            // 8. Định dạng nội dung Mail theo chuẩn giao thức Internet (Bắt buộc đúng cấu trúc này)
-            String emailContent = "From: " + EMAIL_SENDER + "\r\n" +
-                                  "To: " + recipientEmail + "\r\n" +
-                                  "Subject: Ma xac thuc OTP dang ky tai khoan\r\n" +
-                                  "Content-Type: text/html; charset=utf-8\r\n" +
-                                  "\r\n" + // Dòng trống ngăn cách giữa Header và Body
-                                  "<h3>MA XAC THUC DANG KY</h3>" +
-                                  "<p>Ma OTP cua ban la: <b style='font-size:24px;color:red;'>" + otpCode + "</b></p>" +
-                                  "\r\n.\r\n"; // Dấu chấm đứng riêng một dòng để báo kết thúc nội dung dữ liệu
+            // Cấu hình định dạng ID tin nhắn ngẫu nhiên theo thời gian thực để Google không chặn thô
+            String messageId = "<" + System.currentTimeMillis() + "@gmail.com>";
+
+            // Chuỗi Content đầy đủ các thông số định danh chuẩn MIME mã hóa
+            String emailContent = "From: CHAT APP SYSTEM <" + EMAIL_SENDER + ">\r\n" +
+                "To: <" + recipientEmail + ">\r\n" +
+                "Subject: Ma xac thuc OTP dang ky tai khoan\r\n" +
+                "MIME-Version: 1.0\r\n" +
+                "Message-ID: " + messageId + "\r\n" +
+                "Content-Type: text/html; charset=utf-8\r\n" +
+                "Content-Transfer-Encoding: 8bit\r\n" +
+                "\r\n" + 
+                "<html><body>" +
+                "<h3>MA XAC THUC DANG KY TAI KHOAN</h3>" +
+                "<p>Ma OTP cua ban la: <b style='font-size:24px;color:red;'>" + otpCode + "</b></p>" +
+                "<p style='color:#888; font-size:12px;'>Vui long khong chia se ma nay cho bat ky ai.</p>" +
+                "</body></html>" +
+                "\r\n.\r\n"; 
 
             sendCmd(out, emailContent);
-            readResponse(in); // Nhận mã 250 báo gửi thành công
+            readResponse(in); 
 
-            // 9. Gửi lệnh QUIT để ngắt kết nối an toàn với máy chủ Google
             sendCmd(out, "QUIT");
             
             System.out.println("📨 [GMAIL SOCKET]: Đã dùng Email cá nhân gửi thành công OTP [" + otpCode + "] tới " + recipientEmail);
@@ -92,10 +92,21 @@ public class GmailSender {
     }
 
     private static void readResponse(BufferedReader in) throws Exception {
-        String line = in.readLine();
-        // Server SMTP của Google có thể trả về nhiều dòng chào mừng, đọc đến khi dòng không có dấu gạch ngang
-        while (line != null && line.length() >= 4 && line.charAt(3) == '-') {
-            line = in.readLine();
+    String line = in.readLine();
+    // In trực tiếp phản hồi của Google ra Terminal để xem nó báo lỗi gì
+    System.out.println("   -> [Google SMTP]: " + line); 
+    
+    // Nếu gặp mã lỗi đầu 4xx hoặc 5xx (Ví dụ: 535 Authentication Failed)
+    if (line != null && (line.startsWith("4") || line.startsWith("5"))) {
+        throw new Exception("Google SMTP tu choi: " + line);
+    }
+
+    while (line != null && line.length() >= 4 && line.charAt(3) == '-') {
+        line = in.readLine();
+        System.out.println("   -> [Google SMTP]: " + line);
+        if (line.startsWith("4") || line.startsWith("5")) {
+            throw new Exception("Google SMTP tu choi: " + line);
         }
     }
+}
 }
