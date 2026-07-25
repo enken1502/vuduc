@@ -17,12 +17,10 @@ import java.util.Map;
 public class MainServer {
     private static final int PORT = 9999;
     
-    // 🛢️ CẤU HÌNH KẾT NỐI DATABASE SQL SERVER CHUẨN CỦA NHÓM
     private static final String DB_URL = "jdbc:sqlserver://127.0.0.1:1433;databaseName=ChatDB;encrypt=true;trustServerCertificate=true;";
     private static final String DB_USER = "minh";
     private static final String DB_PASS = "1234567";
 
-    // 💾 Quản lý danh sách các luồng Client đang online để phục vụ Broadcast/Chat real-time
     private static final List<ClientHandler> clients = new ArrayList<>();
     private static final Map<String, String> otpStorage = new HashMap<>();
 
@@ -39,10 +37,10 @@ public class MainServer {
                     new Thread(clientHandler).start();
                 }
             } catch (Exception e) {
-                System.err.println("❌ Lỗi Server khởi động thất bại: " + e.getMessage());
+                System.err.println("Lỗi Server khởi động thất bại: " + e.getMessage());
             }
         } else {
-            System.err.println("❌ Dừng Server do không thể kết nối Database!");
+            System.err.println("Dừng Server do không thể kết nối Database!");
         }
     }
 
@@ -50,7 +48,7 @@ public class MainServer {
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
             return conn != null;
         } catch (Exception e) {
-            System.err.println("❌ Lỗi kết nối DB: " + e.getMessage());
+            System.err.println("Lỗi kết nối DB: " + e.getMessage());
             return false;
         }
     }
@@ -258,6 +256,47 @@ public class MainServer {
                             System.err.println("Lỗi xử lý lệnh GROUP_CHAT: " + ex.getMessage());
                         }
                     }
+                    //Xử lý update profile
+                        else if (action.equals("UPDATE_PROFILE")) {
+                        int userId = Integer.parseInt(tokens[1].trim());
+                        String newUsername = tokens[2].trim();
+                        String newPassword = tokens[3].trim();
+
+                        boolean hasNewPassword = !newPassword.equals("KEEP_OLD_PASS") && !newPassword.isEmpty();
+                        String sql;
+
+                        if (hasNewPassword) {
+                            sql = "UPDATE Users SET Username = ?, [Password] = ? WHERE UserID = ?";
+                        } else {
+                            sql = "UPDATE Users SET Username = ? WHERE UserID = ?";
+                        }
+
+                        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+                             PreparedStatement ps = conn.prepareStatement(sql)) {
+                            
+                            ps.setString(1, newUsername);
+                            if (hasNewPassword) {
+                                ps.setString(2, newPassword);
+                                ps.setInt(3, userId);
+                            } else {
+                                ps.setInt(2, userId);
+                            }
+
+                            int rows = ps.executeUpdate();
+                            if (rows > 0) {
+                                this.username = newUsername; // Cập nhật lại username mới cho Session Socket online hiện tại
+                                out.println("UPDATE_PROFILE_SUCCESS;Cập nhật thông tin thành công!");
+                                System.out.println("⚙️ [UPDATE_PROFILE]: Đã đổi thông tin cho UserID: " + userId + " -> Username mới: " + newUsername);
+                            } else {
+                                out.println("UPDATE_PROFILE_FAILED;Không tìm thấy người dùng!");
+                            }
+                        } catch (Exception ex) {
+                            System.err.println("❌ Lỗi UPDATE_PROFILE: " + ex.getMessage());
+                            out.println("UPDATE_PROFILE_FAILED;Tên đăng nhập đã tồn tại hoặc bị lỗi!");
+                        }
+                    }
+
+
                 }
             } catch (Exception e) {
                 System.out.println("🔌 Client ngắt kết nối: " + (username != null ? username : "Ẩn danh"));
