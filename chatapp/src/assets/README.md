@@ -1,0 +1,1 @@
+Folder chứa ảnh sticker
