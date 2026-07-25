@@ -1,83 +1,98 @@
 package view;
 
-import java.awt.Font;
 import javax.swing.*;
 
 public class LoginForm extends JFrame {
-    private JTextField txtEmail;
-    private JPasswordField txtPass;
 
     public LoginForm() {
         setTitle("Đăng nhập");
         setSize(400, 300);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setResizable(false);
 
-        JPanel panel = new JPanel(null);
+        JPanel panel = new JPanel();
+        panel.setLayout(null);
 
-        JLabel title = new JLabel("ĐĂNG NHẬP CHAT APP");
-        title.setFont(new Font("Arial", Font.BOLD, 18));
-        title.setBounds(90, 20, 250, 30);
-
-        JLabel lbEmail = new JLabel("Email:");
-        lbEmail.setBounds(40, 80, 80, 30);
-        txtEmail = new JTextField();
-        txtEmail.setBounds(130, 80, 200, 30);
+        JLabel lbUser = new JLabel("Tên đăng nhập:");
+        lbUser.setBounds(30, 40, 120, 30);
+        JTextField txtUser = new JTextField();
+        txtUser.setBounds(150, 40, 180, 30);
 
         JLabel lbPass = new JLabel("Mật khẩu:");
-        lbPass.setBounds(40, 130, 80, 30);
-        txtPass = new JPasswordField();
-        txtPass.setBounds(130, 130, 200, 30);
+        lbPass.setBounds(30, 90, 120, 30);
+        JPasswordField txtPass = new JPasswordField();
+        txtPass.setBounds(150, 90, 180, 30);
 
         JButton btnLogin = new JButton("Đăng nhập");
-        btnLogin.setBounds(60, 190, 120, 35);
+        btnLogin.setBounds(50, 170, 120, 35);
 
-        JButton btnReg = new JButton("Đăng ký");
-        btnReg.setBounds(200, 190, 120, 35);
+        // SỬA LẠI SỰ KIỆN BTNLOGIN TRONG LOGINFORM.JAVA
+       btnLogin.addActionListener(e -> {
+    String username = txtUser.getText().trim();
+    String password = new String(txtPass.getPassword()).trim();
 
-        btnLogin.addActionListener(e -> loginXuly());
-        btnReg.addActionListener(e -> new RegisterForm());
+    if (username.isEmpty() || password.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng nhập tài khoản và mật khẩu!");
+        return;
+    }
 
-        panel.add(title); panel.add(lbEmail); panel.add(txtEmail);
-        panel.add(lbPass); panel.add(txtPass); panel.add(btnLogin); panel.add(btnReg);
+    try {
+        // 1. Chỉ gọi reconnect nếu socket bị đóng (tránh kết nối thừa thãi gây lỗi)
+        if (ClientSocketManager.getInstance().getSocket() == null || 
+            ClientSocketManager.getInstance().getSocket().isClosed()) {
+            ClientSocketManager.getInstance().reconnect();
+        }
+
+        // 2. GIỮ NGUYÊN lệnh gửi LOGIN gốc của nhóm ông
+        ClientSocketManager.getInstance().sendRequest("LOGIN;" + username + ";" + password);
+        
+        // 3. Đọc phản hồi về
+        String response = ClientSocketManager.getInstance().receiveResponse();
+        System.out.println("➔ [CLIENT_DEBUG] Server phản hồi: " + response);
+        
+        if (response == null) {
+            response = ClientSocketManager.getInstance().receiveResponse(); // Đọc lại phòng hờ lag
+        }
+        
+        // 4. Kiểm tra phản hồi (vừa check chữ hoa/thường, vừa check cả từ khóa của nhóm ông)
+        if (response != null) {
+            String upperRes = response.trim().toUpperCase();
+            if (upperRes.contains("LOGIN_SUCCESS") || 
+                upperRes.contains("SUCCESS") || 
+                upperRes.contains("THÀNH CÔNG") || 
+                upperRes.contains("OK")) {
+                
+                // Đăng nhập thành công -> Chuyển trang
+                MainChatForm mainChat = new MainChatForm(username);
+                mainChat.activateListening();
+                dispose(); 
+                return;
+            }
+        }
+        
+        // Nếu không thỏa mãn điều kiện trên
+        JOptionPane.showMessageDialog(this, "Tài khoản hoặc mật khẩu không chính xác!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+
+    } catch (Exception ex) {
+        JOptionPane.showMessageDialog(this, "Lỗi kết nối Socket: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        ex.printStackTrace();
+    }
+});
+
+        JButton btnRegister = new JButton("Đăng ký");
+        btnRegister.setBounds(200, 170, 120, 35);
+        btnRegister.addActionListener(e -> {
+            new RegisterForm();
+        });
+
+        panel.add(lbUser);
+        panel.add(txtUser);
+        panel.add(lbPass);
+        panel.add(txtPass);
+        panel.add(btnLogin);
+        panel.add(btnRegister);
+
         add(panel);
         setVisible(true);
-    }
-
-    private void loginXuly() {
-        String email = txtEmail.getText().trim();
-        String pass = new String(txtPass.getPassword()).trim();
-
-        if (email.isEmpty() || pass.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng điền đủ tài khoản mật khẩu!");
-            return;
-        }
-
-        // Gửi lệnh đăng nhập lên Server
-        ClientSocketManager.getInstance().sendRequest("LOGIN;" + email + ";" + pass);
-        String response = ClientSocketManager.getInstance().receiveResponse();
-
-        if (response != null && response.startsWith("LOGIN_SUCCESS")) {
-            String[] data = response.split(";");
-            
-            // Đồng bộ nạp dữ liệu Profile vừa đăng nhập vào Singleton Client
-            ClientSocketManager.getInstance().setUsername(data[1]);
-            ClientSocketManager.getInstance().setFullName(data[2]);
-            ClientSocketManager.getInstance().setEmail(data[3]);
-            ClientSocketManager.getInstance().setPhone(data[4]);
-
-            JOptionPane.showMessageDialog(this, "Đăng nhập thành công!");
-            
-            // Chuyển hướng hiển thị thẳng vào trang cá nhân vừa đăng nhập
-            new ProfileForm(data[1]);
-            dispose();
-        } else {
-            JOptionPane.showMessageDialog(this, "Sai tài khoản hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    public static void main(String[] args) {
-        new LoginForm();
     }
 }

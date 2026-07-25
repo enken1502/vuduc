@@ -1,92 +1,82 @@
 package view;
 
-import java.awt.Font;
+import java.awt.*;
 import javax.swing.*;
 
 public class ProfileForm extends JFrame {
-    private JTextField txtFullName, txtEmail, txtPhone;
-    private JLabel lbUsername;
-    private String username;
+    private JTextField txtUserId, txtUsername, txtEmail, txtStatus;
+    private JButton btnEdit;
+    private UserDAO userDAO = new UserDAO();
+    private User currentUser;
 
     public ProfileForm(String username) {
-        this.username = username;
-
-        setTitle("Thông tin cá nhân");
-        setSize(450, 430);
+        setTitle("Thông tin cá nhân - " + username);
+        setSize(380, 280);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setResizable(false);
+        setLayout(new BorderLayout(10, 10));
 
-        JPanel panel = new JPanel(null);
+        JPanel formPanel = new JPanel(new GridLayout(4, 2, 8, 10));
+        formPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        JLabel title = new JLabel("THÔNG TIN CÁ NHÂN");
-        title.setFont(new Font("Arial", Font.BOLD, 20));
-        title.setBounds(100, 10, 250, 30);
+        txtUserId = createReadOnlyField();
+        txtUsername = createReadOnlyField();
+        txtEmail = createReadOnlyField();
+        txtStatus = createReadOnlyField();
 
-        JLabel avatar = new JLabel("👤", SwingConstants.CENTER);
-        avatar.setFont(new Font("Arial", Font.PLAIN, 40));
-        avatar.setBounds(170, 45, 80, 60);
+        formPanel.add(new JLabel("Mã tài khoản (UserID):"));
+        formPanel.add(txtUserId);
 
-        JLabel lbUser = new JLabel("Tên đăng nhập:");
-        lbUser.setBounds(30, 120, 120, 30);
-        lbUsername = new JLabel(username);
-        lbUsername.setBounds(170, 120, 200, 30);
+        formPanel.add(new JLabel("Tên đăng nhập:"));
+        formPanel.add(txtUsername);
 
-        JLabel lbName = new JLabel("Họ tên:");
-        lbName.setBounds(30, 160, 120, 30);
-        txtFullName = new JTextField(ClientSocketManager.getInstance().getFullName());
-        txtFullName.setBounds(170, 160, 220, 30);
+        formPanel.add(new JLabel("Email liên hệ:"));
+        formPanel.add(txtEmail);
 
-        JLabel lbEmail = new JLabel("Email:");
-        lbEmail.setBounds(30, 200, 120, 30);
-        txtEmail = new JTextField(ClientSocketManager.getInstance().getEmail());
-        txtEmail.setBounds(170, 200, 220, 30);
-        txtEmail.setEditable(false); // Email dùng làm ID định danh không được sửa
+        formPanel.add(new JLabel("Trạng thái:"));
+        formPanel.add(txtStatus);
 
-        JLabel lbPhone = new JLabel("SĐT:");
-        lbPhone.setBounds(30, 240, 120, 30);
-        txtPhone = new JTextField(ClientSocketManager.getInstance().getPhone());
-        txtPhone.setBounds(170, 240, 220, 30);
+        add(formPanel, BorderLayout.CENTER);
 
-        JButton btnUpdate = new JButton("Cập nhật");
-        btnUpdate.setBounds(30, 320, 110, 35);
+        // Nút Thay đổi thông tin bên dưới
+        btnEdit = new JButton("Thay đổi thông tin");
+        btnEdit.setPreferredSize(new Dimension(160, 35));
+        JPanel btnPanel = new JPanel();
+        btnPanel.add(btnEdit);
+        add(btnPanel, BorderLayout.SOUTH);
 
-        JButton btnChat = new JButton("Vào Chat");
-        btnChat.setBounds(160, 320, 110, 35);
+        // Nạp dữ liệu
+        loadData(username);
 
-        JButton btnLogout = new JButton("Đăng xuất");
-        btnLogout.setBounds(290, 320, 110, 35);
+        // Sự kiện bấm nút Thay đổi thông tin
+        btnEdit.addActionListener(e -> {
+    if (currentUser != null) {
+        // 1. Khởi tạo EditProfileDialog
+        EditProfileDialog dialog = new EditProfileDialog(ProfileForm.this, currentUser);
+        
+        // 🌟 DÒNG QUAN TRỌNG NHẤT: Bắt buộc phải có setVisible(true) thì Dialog mới hiện lên màn hình!
+        dialog.setVisible(true); 
+    } else {
+        JOptionPane.showMessageDialog(ProfileForm.this, "Không có dữ liệu người dùng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+    }
+});
 
-        // --- XỬ LÝ SỰ KIỆN ---
-        btnUpdate.addActionListener(e -> {
-            String newName = txtFullName.getText().trim();
-            String newPhone = txtPhone.getText().trim();
-
-            if (newName.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Họ tên không được bỏ trống!");
-                return;
-            }
-
-            ClientSocketManager.getInstance().sendRequest("UPDATE_PROFILE;" + username + ";" + newName + ";" + txtEmail.getText() + ";" + newPhone);
-            ClientSocketManager.getInstance().setFullName(newName);
-            ClientSocketManager.getInstance().setPhone(newPhone);
-            JOptionPane.showMessageDialog(this, "Cập nhật thành công thông tin!");
-        });
-
-        btnChat.addActionListener(e -> {
-            new MainChatForm(); // Mở duy nhất một màn hình chính
-            dispose();
-        });
-
-        btnLogout.addActionListener(e -> {
-            new LoginForm();
-            dispose();
-        });
-
-        panel.add(title); panel.add(avatar); panel.add(lbUser); panel.add(lbUsername);
-        panel.add(lbName); panel.add(txtFullName); panel.add(lbEmail); panel.add(txtEmail);
-        panel.add(lbPhone); panel.add(txtPhone); panel.add(btnUpdate); panel.add(btnChat); panel.add(btnLogout);
-        add(panel);
         setVisible(true);
+    }
+
+    private JTextField createReadOnlyField() {
+        JTextField tf = new JTextField();
+        tf.setEditable(false);
+        tf.setBackground(new Color(240, 240, 240));
+        return tf;
+    }
+
+    private void loadData(String username) {
+        currentUser = userDAO.getUserProfile(username);
+        if (currentUser != null) {
+            txtUserId.setText(String.valueOf(currentUser.getUserId()));
+            txtUsername.setText(currentUser.getUsername());
+            txtEmail.setText(currentUser.getEmail() != null ? currentUser.getEmail() : "");
+            txtStatus.setText(currentUser.getStatus() != null ? currentUser.getStatus() : "Online");
+        }
     }
 }
