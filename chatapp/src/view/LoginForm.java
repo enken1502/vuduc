@@ -26,32 +26,56 @@ public class LoginForm extends JFrame {
         JButton btnLogin = new JButton("Đăng nhập");
         btnLogin.setBounds(50, 170, 120, 35);
 
-       // SỬA LẠI SỰ KIỆN BTNLOGIN TRONG LOGINFORM.JAVA
-        btnLogin.addActionListener(e -> {
-            String username = txtUser.getText().trim();
-            String password = new String(txtPass.getPassword()).trim();
+        // SỬA LẠI SỰ KIỆN BTNLOGIN TRONG LOGINFORM.JAVA
+       btnLogin.addActionListener(e -> {
+    String username = txtUser.getText().trim();
+    String password = new String(txtPass.getPassword()).trim();
 
-            if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập tài khoản và mật khẩu!");
-            return;
+    if (username.isEmpty() || password.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng nhập tài khoản và mật khẩu!");
+        return;
+    }
+
+    try {
+        // 1. Chỉ gọi reconnect nếu socket bị đóng (tránh kết nối thừa thãi gây lỗi)
+        if (ClientSocketManager.getInstance().getSocket() == null || 
+            ClientSocketManager.getInstance().getSocket().isClosed()) {
+            ClientSocketManager.getInstance().reconnect();
         }
 
-    // Đảm bảo kết nối Socket luôn mới và sạch sẽ trước khi gửi
-    ClientSocketManager.getInstance().sendRequest("LOGIN;" + username + ";" + password);
-    
-    String response = ClientSocketManager.getInstance().receiveResponse();
-    
-    // Nếu vô tình lần đầu bị lag ra null, cho nó thử đọc lại thêm 1 lần nữa ngay lập tức cứu vãn
-    if (response == null) {
-        response = ClientSocketManager.getInstance().receiveResponse();
-    }
-    
-    if (response != null && response.trim().toUpperCase().contains("LOGIN_SUCCESS")) {
-        MainChatForm mainChat = new MainChatForm(username);
-        mainChat.activateListening();
-        dispose();
-    } else {
-        JOptionPane.showMessageDialog(this, "Tài khoản hoặc mật khẩu không chính xác! (Hoặc lỗi kết nối)", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        // 2. GIỮ NGUYÊN lệnh gửi LOGIN gốc của nhóm ông
+        ClientSocketManager.getInstance().sendRequest("LOGIN;" + username + ";" + password);
+        
+        // 3. Đọc phản hồi về
+        String response = ClientSocketManager.getInstance().receiveResponse();
+        System.out.println("➔ [CLIENT_DEBUG] Server phản hồi: " + response);
+        
+        if (response == null) {
+            response = ClientSocketManager.getInstance().receiveResponse(); // Đọc lại phòng hờ lag
+        }
+        
+        // 4. Kiểm tra phản hồi (vừa check chữ hoa/thường, vừa check cả từ khóa của nhóm ông)
+        if (response != null) {
+            String upperRes = response.trim().toUpperCase();
+            if (upperRes.contains("LOGIN_SUCCESS") || 
+                upperRes.contains("SUCCESS") || 
+                upperRes.contains("THÀNH CÔNG") || 
+                upperRes.contains("OK")) {
+                
+                // Đăng nhập thành công -> Chuyển trang
+                MainChatForm mainChat = new MainChatForm(username);
+                mainChat.activateListening();
+                dispose(); 
+                return;
+            }
+        }
+        
+        // Nếu không thỏa mãn điều kiện trên
+        JOptionPane.showMessageDialog(this, "Tài khoản hoặc mật khẩu không chính xác!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+
+    } catch (Exception ex) {
+        JOptionPane.showMessageDialog(this, "Lỗi kết nối Socket: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        ex.printStackTrace();
     }
 });
 

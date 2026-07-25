@@ -9,10 +9,8 @@ import java.util.Random;
 import javax.net.ssl.SSLSocketFactory;
 
 public class GmailSender {
-    // 🌟 ĐIỀN EMAIL CỦA BẠN VÀ MẬT KHẨU ỨNG DỤNG 16 KÝ TỰ VÀO ĐÂY
     private static final String EMAIL_SENDER = "vduc2503@gmail.com";
-    // Sửa từ "iyxxlrvemnuzkoz" thành chuỗi đầy đủ 16 ký tự dưới đây:
-private static final String EMAIL_APP_PASSWORD = "iyyx xrlv emnu zkoz";//
+private static final String EMAIL_APP_PASSWORD = "iyyx xrlv emnu zkoz";
 
     public static String generateOTP() {
         Random random = new Random();
@@ -52,10 +50,8 @@ private static final String EMAIL_APP_PASSWORD = "iyyx xrlv emnu zkoz";//
             sendCmd(out, "DATA");
             readResponse(in); 
 
-            // Cấu hình định dạng ID tin nhắn ngẫu nhiên theo thời gian thực để Google không chặn thô
             String messageId = "<" + System.currentTimeMillis() + "@gmail.com>";
 
-            // Chuỗi Content đầy đủ các thông số định danh chuẩn MIME mã hóa
             String emailContent = "From: CHAT APP SYSTEM <" + EMAIL_SENDER + ">\r\n" +
                 "To: <" + recipientEmail + ">\r\n" +
                 "Subject: Ma xac thuc OTP dang ky tai khoan\r\n" +
@@ -76,11 +72,11 @@ private static final String EMAIL_APP_PASSWORD = "iyyx xrlv emnu zkoz";//
 
             sendCmd(out, "QUIT");
             
-            System.out.println("📨 [GMAIL SOCKET]: Đã dùng Email cá nhân gửi thành công OTP [" + otpCode + "] tới " + recipientEmail);
+            System.out.println("[GMAIL SOCKET]: Đã dùng Email cá nhân gửi thành công OTP [" + otpCode + "] tới " + recipientEmail);
             return true;
 
         } catch (Exception e) {
-            System.err.println("❌ [GMAIL SOCKET ERROR]: Gửi mail thất bại: " + e.getMessage());
+            System.err.println("[GMAIL SOCKET ERROR]: Gửi mail thất bại: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -93,10 +89,8 @@ private static final String EMAIL_APP_PASSWORD = "iyyx xrlv emnu zkoz";//
 
     private static void readResponse(BufferedReader in) throws Exception {
     String line = in.readLine();
-    // In trực tiếp phản hồi của Google ra Terminal để xem nó báo lỗi gì
     System.out.println("   -> [Google SMTP]: " + line); 
     
-    // Nếu gặp mã lỗi đầu 4xx hoặc 5xx (Ví dụ: 535 Authentication Failed)
     if (line != null && (line.startsWith("4") || line.startsWith("5"))) {
         throw new Exception("Google SMTP tu choi: " + line);
     }

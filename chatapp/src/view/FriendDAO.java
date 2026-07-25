@@ -41,6 +41,25 @@ public class FriendDAO {
             return false;
         }
     }
+    public List<String> searchUsers(String keyword) {
+    List<String> list = new ArrayList<>();
+    // Câu lệnh SQL tìm kiếm tài khoản gần đúng theo Username
+    String sql = "SELECT UserID, Username FROM Users WHERE Username LIKE ? ORDER BY Username ASC";
+    try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+        ps.setString(1, "%" + keyword.trim() + "%");
+        try (ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                int id = rs.getInt("UserID");
+                String username = rs.getString("Username");
+                // Định dạng chuỗi hiển thị kèm ID phía sau để nhận biết
+                list.add(username + " (ID: " + id + ")");
+            }
+        }
+    } catch (Exception e) {
+        System.err.println("❌ Lỗi searchUsers: " + e.getMessage());
+    }
+    return list;
+}
 
     public List<String> getAcceptedFriends(String username) {
         List<String> list = new ArrayList<>();

@@ -1,48 +1,82 @@
 package view;
 
+import java.awt.*;
 import javax.swing.*;
 
 public class ProfileForm extends JFrame {
+    private JTextField txtUserId, txtUsername, txtEmail, txtStatus;
+    private JButton btnEdit;
+    private UserDAO userDAO = new UserDAO();
+    private User currentUser;
 
-    public ProfileForm() {
-
-        setTitle("Thông tin cá nhân");
-        setSize(400,350);
+    public ProfileForm(String username) {
+        setTitle("Thông tin cá nhân - " + username);
+        setSize(380, 280);
         setLocationRelativeTo(null);
+        setLayout(new BorderLayout(10, 10));
 
-        JPanel panel = new JPanel();
-        panel.setLayout(null);
+        JPanel formPanel = new JPanel(new GridLayout(4, 2, 8, 10));
+        formPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        JLabel lbName = new JLabel("Họ tên:");
-        lbName.setBounds(30,30,100,30);
+        txtUserId = createReadOnlyField();
+        txtUsername = createReadOnlyField();
+        txtEmail = createReadOnlyField();
+        txtStatus = createReadOnlyField();
 
-        JTextField txtName = new JTextField();
-        txtName.setBounds(130,30,200,30);
+        formPanel.add(new JLabel("Mã tài khoản (UserID):"));
+        formPanel.add(txtUserId);
 
-        JLabel lbEmail = new JLabel("Email:");
-        lbEmail.setBounds(30,80,100,30);
+        formPanel.add(new JLabel("Tên đăng nhập:"));
+        formPanel.add(txtUsername);
 
-        JTextField txtEmail = new JTextField();
-        txtEmail.setBounds(130,80,200,30);
+        formPanel.add(new JLabel("Email liên hệ:"));
+        formPanel.add(txtEmail);
 
-        JLabel lbPhone = new JLabel("SĐT:");
-        lbPhone.setBounds(30,130,100,30);
+        formPanel.add(new JLabel("Trạng thái:"));
+        formPanel.add(txtStatus);
 
-        JTextField txtPhone = new JTextField();
-        txtPhone.setBounds(130,130,200,30);
+        add(formPanel, BorderLayout.CENTER);
 
-        JButton btnUpdate = new JButton("Cập nhật");
-        btnUpdate.setBounds(130,200,120,35);
+        // Nút Thay đổi thông tin bên dưới
+        btnEdit = new JButton("Thay đổi thông tin");
+        btnEdit.setPreferredSize(new Dimension(160, 35));
+        JPanel btnPanel = new JPanel();
+        btnPanel.add(btnEdit);
+        add(btnPanel, BorderLayout.SOUTH);
 
-        panel.add(lbName);
-        panel.add(txtName);
-        panel.add(lbEmail);
-        panel.add(txtEmail);
-        panel.add(lbPhone);
-        panel.add(txtPhone);
-        panel.add(btnUpdate);
+        // Nạp dữ liệu
+        loadData(username);
 
-        add(panel);
+        // Sự kiện bấm nút Thay đổi thông tin
+        btnEdit.addActionListener(e -> {
+    if (currentUser != null) {
+        // 1. Khởi tạo EditProfileDialog
+        EditProfileDialog dialog = new EditProfileDialog(ProfileForm.this, currentUser);
+        
+        // 🌟 DÒNG QUAN TRỌNG NHẤT: Bắt buộc phải có setVisible(true) thì Dialog mới hiện lên màn hình!
+        dialog.setVisible(true); 
+    } else {
+        JOptionPane.showMessageDialog(ProfileForm.this, "Không có dữ liệu người dùng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+    }
+});
+
         setVisible(true);
+    }
+
+    private JTextField createReadOnlyField() {
+        JTextField tf = new JTextField();
+        tf.setEditable(false);
+        tf.setBackground(new Color(240, 240, 240));
+        return tf;
+    }
+
+    private void loadData(String username) {
+        currentUser = userDAO.getUserProfile(username);
+        if (currentUser != null) {
+            txtUserId.setText(String.valueOf(currentUser.getUserId()));
+            txtUsername.setText(currentUser.getUsername());
+            txtEmail.setText(currentUser.getEmail() != null ? currentUser.getEmail() : "");
+            txtStatus.setText(currentUser.getStatus() != null ? currentUser.getStatus() : "Online");
+        }
     }
 }

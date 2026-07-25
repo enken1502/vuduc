@@ -37,6 +37,7 @@ public class ClientSocketManager {
             out.println(request);
         }
     }
+    
 
     public String receiveResponse() {
         try {
@@ -48,4 +49,25 @@ public class ClientSocketManager {
         }
         return null;
     }
+    public Socket getSocket() {
+    return this.socket; // Trả về biến Socket đang kết nối của Client
+}
+
+public void reconnect() {
+    try {
+        // Đóng socket cũ nếu nó chưa đóng hoàn toàn
+        if (socket != null && !socket.isClosed()) {
+            socket.close();
+        }
+        
+        // Khởi tạo lại kết nối mới sử dụng SERVER_IP và SERVER_PORT có sẵn của ông
+        this.socket = new java.net.Socket(SERVER_IP, SERVER_PORT);
+        this.out = new java.io.PrintWriter(socket.getOutputStream(), true);
+        this.in = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream(), "UTF-8"));
+        
+        System.out.println("➔ [SOCKET]: Đã kết nối lại thành công!");
+    } catch (Exception e) {
+        System.err.println("❌ Lỗi reconnect: " + e.getMessage());
+    }
+}
 }
