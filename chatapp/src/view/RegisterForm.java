@@ -60,18 +60,27 @@ public class RegisterForm extends JFrame {
 
         // Hành động 1: Bấm nút Gửi OTP
         btnOTP.addActionListener(e -> {
-            String email = txtEmail.getText().trim();
-            String gmailRegex = "^[A-Za-z0-9._%+-]+@gmail\\.com$";
+    String email = txtEmail.getText().trim();
+    String gmailRegex = "^[A-Za-z0-9._%+-]+@gmail\\.com$";
 
-            if (!email.matches(gmailRegex)) {
-                JOptionPane.showMessageDialog(this, "Email không đúng định dạng Gmail!\nVí dụ: abc@gmail.com", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
+    if (!email.matches(gmailRegex)) {
+        JOptionPane.showMessageDialog(this, "Email không đúng định dạng Gmail!\nVí dụ: abc@gmail.com", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        return;
+    }
 
-            // Gửi lệnh yêu cầu Server tạo và gửi OTP: SEND_OTP;<email>
-            view.ClientSocketManager.getInstance().sendRequest("SEND_OTP;" + email);
-            JOptionPane.showMessageDialog(this, "Đang gửi mã OTP đến Gmail của bạn, vui lòng kiểm tra!");
-        });
+    // Gửi lệnh yêu cầu Server tạo và gửi OTP: SEND_OTP;<email>
+    view.ClientSocketManager.getInstance().sendRequest("SEND_OTP;" + email);
+    
+    // Nhận phản hồi ngay lập tức từ Server
+    String response = view.ClientSocketManager.getInstance().receiveResponse();
+    if ("OTP_SENT_SUCCESS".equals(response)) {
+        JOptionPane.showMessageDialog(this, "Đã gửi mã OTP đến Gmail của bạn, vui lòng kiểm tra!");
+    } else if (response != null && response.startsWith("SEND_OTP_FAILED")) {
+        String[] parts = response.split(";");
+        String errorMsg = parts.length > 1 ? parts[1] : "Gửi OTP thất bại!";
+        JOptionPane.showMessageDialog(this, errorMsg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+    }
+});
 
         // Hành động 2: Bấm nút Đăng ký
         btnRegister.addActionListener(e -> {

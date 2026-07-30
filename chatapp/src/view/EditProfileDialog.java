@@ -23,7 +23,7 @@ public class EditProfileDialog extends JDialog {
         formPanel.add(new JLabel("Tên đăng nhập mới:"));
         formPanel.add(txtUsername);
 
-        formPanel.add(new JLabel("Mật khẩu mới (để trống nếu giữ nguyên):"));
+        formPanel.add(new JLabel("Mật khẩu mới:"));
         formPanel.add(txtPassword);
 
         add(formPanel, BorderLayout.CENTER);

@@ -7,7 +7,7 @@ import java.sql.PreparedStatement;
 public class UserDAO {
     private static final String DB_URL = "jdbc:sqlserver://127.0.0.1:1433;databaseName=ChatDB;encrypt=true;trustServerCertificate=true;";
     private static final String DB_USER = "minh";
-    private static final String DB_PASS = "1234567";
+    private static final String DB_PASS = "12345678";
 
     private Connection getConnection() throws Exception {
         Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");

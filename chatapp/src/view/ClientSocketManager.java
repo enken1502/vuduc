@@ -11,8 +11,8 @@ public class ClientSocketManager {
     private PrintWriter out;
     private BufferedReader in;
     
-    private final String SERVER_IP = "localhost"; 
-    private final int SERVER_PORT = 9999;
+private static final String SERVER_IP = "127.0.0.1"; 
+private static final int SERVER_PORT = 9999;
 
     private ClientSocketManager() {
         try {
@@ -49,6 +49,7 @@ public class ClientSocketManager {
         }
         return null;
     }
+    
     public Socket getSocket() {
     return this.socket; // Trả về biến Socket đang kết nối của Client
 }

@@ -215,6 +215,34 @@ public class MainChatForm extends JFrame {
             e.printStackTrace();
         }
     }
+    // Hàm chèn trực tiếp thông báo hệ thống vào khung chat hiện tại
+private void appendSystemAnnouncement(String text) {
+    SwingUtilities.invokeLater(() -> {
+        try {
+            // Trường hợp 1: Nếu bạn xài JTextPane / StyledDocument
+            if (chatPane != null) {
+                javax.swing.text.StyledDocument doc = chatPane.getStyledDocument();
+                javax.swing.text.SimpleAttributeSet style = new javax.swing.text.SimpleAttributeSet();
+                javax.swing.text.StyleConstants.setForeground(style, java.awt.Color.RED); // Chữ màu đỏ
+                javax.swing.text.StyleConstants.setBold(style, true); // In đậm
+
+                doc.insertString(doc.getLength(), "\n📢 [THÔNG BÁO HỆ THỐNG]: " + text + "\n\n", style);
+                chatPane.setCaretPosition(doc.getLength()); // Tự cuộn xuống dưới cùng
+            }
+        } catch (Exception ex) {
+            // Trường hợp 2: Dự phòng nếu dùng appendChatMessage thông thường
+            appendChatMessage("HỆ THỐNG", "[THÔNG BÁO]: " + text);
+        }
+    });
+}
+    public void loadGroupList() {
+    // Gửi yêu cầu lên Server để tải lại danh sách nhóm
+    try {
+        ClientSocketManager.getInstance().sendRequest("GET_GROUPS");
+    } catch (Exception e) {
+        System.err.println("Lỗi khi tải danh sách nhóm: " + e.getMessage());
+    }
+}
 
     private void appendChatMessage(String sender, String content) {
     StyledDocument doc = chatPane.getStyledDocument();
@@ -327,23 +355,25 @@ public class MainChatForm extends JFrame {
     // 6. XỬ LÝ GỬI TIN NHẮN, STICKER VÀ FILE (ĐÃ HOÀN THIỆN LOGIC GỬI FILE)
     // =========================================================================
     
-    private void performSendMessage() {
-        String msg = txtMessage.getText().trim();
-        if (msg.isEmpty()) return;
+   private void performSendMessage() {
+    String msg = txtMessage.getText().trim();
+    if (msg.isEmpty()) return;
 
-        if (currentTarget.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn đối tượng từ danh sách để chat!");
-            return;
-        }
-
-        if (isGroupChat) {
-            ClientSocketManager.getInstance().sendRequest("GROUP_CHAT;" + currentTarget + ";" + msg);
-        } else {
-            ClientSocketManager.getInstance().sendRequest("CHAT;" + currentTarget + ";" + msg);
-        }
-        appendChatMessage(myUsername, msg); 
-        txtMessage.setText("");
+    if (currentTarget.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng chọn đối tượng từ danh sách để chat!");
+        return;
     }
+
+    if (isGroupChat) {
+        ClientSocketManager.getInstance().sendRequest("GROUP_CHAT;" + currentTarget + ";" + msg);
+    } else {
+        ClientSocketManager.getInstance().sendRequest("CHAT;" + currentTarget + ";" + msg);
+    }
+    
+    // In tin nhắn lên màn hình của chính mình ngay lập tức
+    appendChatMessage(myUsername, msg); 
+    txtMessage.setText("");
+}
 
     // Sử dụng cơ chế kiểm tra định dạng thông minh của ImageIO để bắt lỗi file ảnh WEBP giả danh
     private void showStickerDialog() {
@@ -427,7 +457,6 @@ public class MainChatForm extends JFrame {
                 }
                 
                 // Hiển thị trạng thái gửi file lên khung JTextPane local
-                appendChatMessage(myUsername, fileMsg);
                 JOptionPane.showMessageDialog(this, "Gửi tệp tin thành công!");
                 
             } catch (Exception ex) {
@@ -487,14 +516,45 @@ public class MainChatForm extends JFrame {
                         String cmd = data[0];
                         
                         if (cmd.equals("RECEIVE_MSG")) {
-                            String sender = data[1];
-                            String content = data[2];
-                            if (!isGroupChat && sender.equalsIgnoreCase(currentTarget)) {
-                                appendChatMessage(sender, content);
-                            } else {
-                                appendChatMessage(sender, "[Tin nhắn riêng]: " + content);
-                            }
-                        } 
+    String sender = data[1];
+    String content = data[2];
+    
+    // Nếu tin nhắn là từ chính mình GỬI ĐI hoặc từ bạn chat đang mở -> In lên màn hình
+    if (sender.equalsIgnoreCase(myUsername) || (!isGroupChat && sender.equalsIgnoreCase(currentTarget))) {
+        appendChatMessage(sender, content);
+    } else {
+        appendChatMessage(sender, "[Tin nhắn riêng]: " + content);
+    }
+}
+                        else if (cmd.equals("SEND_MSG_FAILED")) {
+                        String errorMsg = (data.length > 1) ? data[1] : "Tài khoản không tồn tại";
+                        
+                        // Dùng SwingUtilities.invokeLater để hiển thị Popup mượt mà không làm đơ UI
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(this, errorMsg, "Thông báo", JOptionPane.WARNING_MESSAGE);
+                        });
+                    }
+                        // Trong hàm activateListening() của MainChatForm.java:
+                        else if (cmd.equals("ANNOUNCEMENT")) {
+                        String annText = data.length > 1 ? data[1] : "";      
+                            appendSystemAnnouncement(annText);
+                        }
+                        // Trong hàm activateListening() của MainChatForm.java:
+else if (cmd.equals("FORCE_LOGOUT")) {
+    String reason = (data.length > 1) ? data[1] : "Tài khoản của bạn đã bị khóa!";
+    
+    // 1. Tắt cờ lắng nghe ngay lập tức
+    isListening = false; 
+    
+    // 2. Đóng kết nối socket hiện tại để xả luồng cũ
+    
+    SwingUtilities.invokeLater(() -> {
+        JOptionPane.showMessageDialog(this, reason, "Thông báo hệ thống", JOptionPane.ERROR_MESSAGE);
+        this.dispose(); // Tắt MainChatForm
+        new LoginForm(); // Mở LoginForm
+    });
+    break; // Thoát vòng lặp while của Thread
+}
                         else if (cmd.equals("RECEIVE_GROUP_MSG")) {
                             String groupName = data[1];
                             String sender = data[2];
