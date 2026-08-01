@@ -97,8 +97,8 @@ public class MainServer {
                     System.out.println("\n--- DANH SÁCH LỆNH ADMIN SERVER ---");
                     System.out.println("1. stats             : Xem thống kê tổng số user và danh sách online");
                     System.out.println("2. announce <text>   : Gửi tin nhắn hệ thống tới tất cả Client");
-                    System.out.println("3. block <username>  : Khóa tài khoản và ngắt kết nối người dùng ngay lập tức");
-                    System.out.println("4. unblock <username>: Mở khóa tài khoản người dùng");
+                    System.out.println("3. block <username (ID:)>  : Khóa tài khoản và ngắt kết nối người dùng ngay lập tức");
+                    System.out.println("4. unblock <username (ID:)>: Mở khóa tài khoản người dùng");
                     System.out.println("-----------------------------------\n");
                     break;
 
@@ -203,55 +203,136 @@ public class MainServer {
     logActivity("ANNOUNCEMENT", "Gửi thông báo: " + text);
 }
 
-   private static void blockUser(String username) {
-    String sql = "UPDATE Users SET [Status] = 0 WHERE Username = ?";
-    try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
-         PreparedStatement ps = conn.prepareStatement(sql)) {
-        ps.setString(1, username);
-        int rows = ps.executeUpdate();
-        if (rows > 0) {
-            System.out.println("🔒 Đã khóa tài khoản: " + username);
-            logActivity("BLOCK_USER", "Khóa tài khoản: " + username);
+   private static void blockUser(String input) {
+    if (input == null || input.trim().isEmpty()) return;
+    input = input.trim();
 
-            synchronized (clients) {
-                for (ClientHandler client : clients) {
-                    if (client.username != null && client.username.equalsIgnoreCase(username)) {
-                        // 🌟 Gửi tín hiệu ép Client đăng xuất lập tức
-                        client.sendMessage("FORCE_LOGOUT;Tài khoản của bạn đã bị KHÓA bởi Admin!");
-                        
-                        // Đợi 200ms cho Client kịp nhận gói tin rồi mới đóng Socket
-                        new Thread(() -> {
-                            try { Thread.sleep(200); } catch (Exception ignored) {}
-                            client.kickClient();
-                        }).start();
-                        break;
-                    }
+    int userId = -1;
+    String targetUsername = "";
+
+    // Bóc tách ID nếu truyền vào dạng "Username (ID: 5)"
+    if (input.contains("(ID:") && input.endsWith(")")) {
+        try {
+            int idStart = input.indexOf("(ID:") + 4;
+            int idEnd = input.indexOf(")", idStart);
+            userId = Integer.parseInt(input.substring(idStart, idEnd).trim());
+            targetUsername = input.substring(0, input.indexOf("(ID:")).trim();
+        } catch (Exception e) {
+            System.out.println("⚠️ Định dạng ID không hợp lệ!");
+            return;
+        }
+    } else if (input.matches("\\d+")) { // Nhập mỗi số ID (VD: block 5)
+        userId = Integer.parseInt(input);
+    } else { // Nhập mỗi Username
+        targetUsername = input;
+    }
+
+    // SQL Cập nhật và SQL Tìm thông tin user
+    String updateSql = (userId != -1) 
+            ? "UPDATE Users SET [Status] = 0 WHERE UserID = ?" 
+            : "UPDATE Users SET [Status] = 0 WHERE Username = ?";
+    
+    String findUserSql = (userId != -1)
+            ? "SELECT UserID, Username FROM Users WHERE UserID = ?"
+            : "SELECT UserID, Username FROM Users WHERE Username = ?";
+
+    try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
+        // Tìm thông tin chính xác của User
+        try (PreparedStatement psFind = conn.prepareStatement(findUserSql)) {
+            if (userId != -1) psFind.setInt(1, userId);
+            else psFind.setString(1, targetUsername);
+
+            try (ResultSet rs = psFind.executeQuery()) {
+                if (rs.next()) {
+                    userId = rs.getInt("UserID");
+                    targetUsername = rs.getString("Username");
+                } else {
+                    System.out.println("⚠️ Không tìm thấy user: " + input);
+                    return;
                 }
             }
-        } else {
-            System.out.println("⚠️ Không tìm thấy user: " + username);
+        }
+
+        // Thực hiện Block trong DB
+        try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+            if (userId != -1) ps.setInt(1, userId);
+            else ps.setString(1, targetUsername);
+
+            int rows = ps.executeUpdate();
+            if (rows > 0) {
+                System.out.println("🔒 Đã khóa tài khoản: " + targetUsername + " (ID: " + userId + ")");
+                logActivity("BLOCK_USER", "Khóa tài khoản: " + targetUsername + " (ID: " + userId + ")");
+
+                // Kích người dùng ra khỏi Server ngay lập tức
+                synchronized (clients) {
+                    for (ClientHandler client : clients) {
+                        // So sánh theo Username hoặc theo ID (nếu ClientHandler có lưu userId)
+                        if (client.username != null && client.username.equalsIgnoreCase(targetUsername)) {
+                            client.sendMessage("FORCE_LOGOUT;Tài khoản của bạn đã bị KHÓA bởi Admin!");
+
+                            new Thread(() -> {
+                                try { Thread.sleep(200); } catch (Exception ignored) {}
+                                client.kickClient();
+                            }).start();
+                            break;
+                        }
+                    }
+                }
+            } else {
+                System.out.println("⚠️ Không tìm thấy user: " + input);
+            }
         }
     } catch (Exception e) {
         System.err.println("❌ Lỗi khóa tài khoản: " + e.getMessage());
     }
 }
 
-    private static void unblockUser(String username) {
-        String sql = "UPDATE Users SET [Status] = 1 WHERE Username = ?";
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username);
-            int rows = ps.executeUpdate();
-            if (rows > 0) {
-                System.out.println("🔓 Đã mở khóa tài khoản: " + username);
-                logActivity("UNBLOCK_USER", "Admin đã mở khóa tài khoản: " + username);
-            } else {
-                System.out.println("⚠️ Không tìm thấy người dùng: " + username);
-            }
+    private static void unblockUser(String input) {
+    if (input == null || input.trim().isEmpty()) return;
+    input = input.trim();
+
+    int userId = -1;
+    String targetUsername = "";
+
+    // Bóc tách ID nếu truyền vào dạng "Username (ID: 5)"
+    if (input.contains("(ID:") && input.endsWith(")")) {
+        try {
+            int idStart = input.indexOf("(ID:") + 4;
+            int idEnd = input.indexOf(")", idStart);
+            userId = Integer.parseInt(input.substring(idStart, idEnd).trim());
+            targetUsername = input.substring(0, input.indexOf("(ID:")).trim();
         } catch (Exception e) {
-            System.err.println("❌ Lỗi mở khóa tài khoản: " + e.getMessage());
+            System.out.println("⚠️ Định dạng ID không hợp lệ!");
+            return;
         }
+    } else if (input.matches("\\d+")) {
+        userId = Integer.parseInt(input);
+    } else {
+        targetUsername = input;
     }
+
+    String updateSql = (userId != -1) 
+            ? "UPDATE Users SET [Status] = 1 WHERE UserID = ?" 
+            : "UPDATE Users SET [Status] = 1 WHERE Username = ?";
+
+    try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+         PreparedStatement ps = conn.prepareStatement(updateSql)) {
+
+        if (userId != -1) ps.setInt(1, userId);
+        else ps.setString(1, targetUsername);
+
+        int rows = ps.executeUpdate();
+        if (rows > 0) {
+            String displayInfo = (userId != -1) ? (targetUsername + " (ID: " + userId + ")") : input;
+            System.out.println("🔓 Đã mở khóa tài khoản: " + displayInfo);
+            logActivity("UNBLOCK_USER", "Admin đã mở khóa tài khoản: " + displayInfo);
+        } else {
+            System.out.println("⚠️ Không tìm thấy người dùng: " + input);
+        }
+    } catch (Exception e) {
+        System.err.println("❌ Lỗi mở khóa tài khoản: " + e.getMessage());
+    }
+}
 
     // Gửi tin nhắn real-time tới một User cụ thể đang online
     public static synchronized void sendToUser(String targetUsername, String message) {
@@ -485,11 +566,11 @@ else if (action.equals("CHAT")) {
             psInsert.executeUpdate();
         }
 
-        // 🌟 GỬI CHO NGƯỜI NHẬN (nếu online)
-        MainServer.sendToUser(targetUser, "RECEIVE_MSG;" + this.username + ";" + msgContent);
-
+if (!targetUser.equalsIgnoreCase(this.username)) {
+    MainServer.sendToUser(targetUser, "RECEIVE_MSG;" + this.username + ";" + msgContent);
+}
         // 🌟 GỬI LẠI CHO CHÍNH NGƯỜI GỬI (để Client người gửi tự in tin nhắn lên màn hình)
-        out.println("RECEIVE_MSG;" + this.username + ";" + msgContent);
+out.println("RECEIVE_MSG;" + this.username + ";" + msgContent);
 
     } catch (Exception ex) {
         System.err.println("Lỗi xử lý lệnh CHAT: " + ex.getMessage());
