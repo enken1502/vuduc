@@ -120,6 +120,104 @@ public class MainChatForm extends JFrame {
         add(rightPanel, BorderLayout.CENTER);
 
         // =========================================================================
+// TẠO MENU CHUỘT PHẢI CHO DANH SÁCH NHÓM CHAT (JPopupMenu)
+// =========================================================================
+JPopupMenu groupPopupMenu = new JPopupMenu();
+JMenuItem itemAddMember = new JMenuItem("Thêm thành viên");
+JMenuItem itemLeaveGroup = new JMenuItem("Rời khỏi nhóm");
+
+groupPopupMenu.add(itemAddMember);
+groupPopupMenu.add(itemLeaveGroup);
+
+// Bắt sự kiện Click chuột phải trên JList nhóm
+jlGroupsSidebar.addMouseListener(new java.awt.event.MouseAdapter() {
+    @Override
+    public void mousePressed(java.awt.event.MouseEvent e) {
+        if (SwingUtilities.isRightMouseButton(e)) {
+            // Tự động chọn dòng (nhóm) ngay vị trí con trỏ chuột bấm vào
+            int row = jlGroupsSidebar.locationToIndex(e.getPoint());
+            if (row != -1) {
+                jlGroupsSidebar.setSelectedIndex(row);
+                // Hiển thị Menu chuột phải tại vị trí con trỏ chuột
+                groupPopupMenu.show(jlGroupsSidebar, e.getX(), e.getY());
+            }
+        }
+    }
+});
+
+// 1. Xử lý chức năng "Thêm thành viên"
+// Xử lý chức năng "Thêm thành viên": Gõ tên -> Hiện Dropdown danh sách kèm ID -> Chọn người cần thêm
+itemAddMember.addActionListener(e -> {
+    String selectedGroup = jlGroupsSidebar.getSelectedValue();
+    if (selectedGroup == null) return;
+
+    // BƯỚC 1: Cho người dùng nhập từ khóa Username
+    String keyword = JOptionPane.showInputDialog(
+            this, 
+            "Nhập Username tài khoản bạn muốn tìm để thêm vào nhóm [" + selectedGroup + "]:", 
+            "Tìm kiếm thành viên", 
+            JOptionPane.QUESTION_MESSAGE
+    );
+
+    if (keyword == null || keyword.trim().isEmpty()) return;
+    keyword = keyword.trim();
+
+    // BƯỚC 2: Truy vấn CSDL lấy danh sách trùng từ khóa dạng "Username (ID: x)"
+    List<String> matchedUsers = friendDAO.searchUsersNotInGroup(keyword, selectedGroup);
+
+    if (matchedUsers.isEmpty()) {
+        JOptionPane.showMessageDialog(this, 
+                "Không tìm thấy tài khoản nào phù hợp hoặc người này đã có trong nhóm!", 
+                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        return;
+    }
+
+    // BƯỚC 3: Hiển thị Popup Dropdown danh sách kết quả kèm ID để người dùng chọn
+    String selectedUserOption = (String) JOptionPane.showInputDialog(
+            this,
+            "Tìm thấy các tài khoản sau, vui lòng chọn người muốn thêm vào nhóm:",
+            "Kết quả tìm kiếm",
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            matchedUsers.toArray(),
+            matchedUsers.get(0)
+    );
+
+    // BƯỚC 4: Tách lấy Username gốc từ chuỗi "Username (ID: x)" và thực hiện thêm vào nhóm
+    if (selectedUserOption != null) {
+        // Tách chuỗi để lấy ra Username thực tế (Lấy phần trước dấu cách " (ID:")
+        String actualUsername = selectedUserOption.split(" \\(ID:")[0].trim();
+
+        if (friendDAO.addMemberToGroup(selectedGroup, actualUsername)) {
+            JOptionPane.showMessageDialog(this, "Đã thêm " + actualUsername + " vào nhóm thành công!");
+        } else {
+            JOptionPane.showMessageDialog(this, "Thêm thành viên thất bại!");
+        }
+    }
+});
+
+// 2. Xử lý chức năng "Rời khỏi nhóm"
+itemLeaveGroup.addActionListener(e -> {
+    String selectedGroup = jlGroupsSidebar.getSelectedValue();
+    if (selectedGroup == null) return;
+
+    int confirm = JOptionPane.showConfirmDialog(this, 
+            "Bạn có chắc chắn muốn rời khỏi nhóm [" + selectedGroup + "]?", 
+            "Xác nhận rời nhóm", 
+            JOptionPane.YES_NO_OPTION);
+
+    if (confirm == JOptionPane.YES_OPTION) {
+        if (friendDAO.leaveGroup(myUsername, selectedGroup)) {
+            JOptionPane.showMessageDialog(this, "Bạn đã rời khỏi nhóm [" + selectedGroup + "]");
+            loadFriendAndGroupData(); // Tải lại danh sách để xóa nhóm khỏi giao diện
+            chatPane.setText("");     // Xóa khung chat hiện tại
+        } else {
+            JOptionPane.showMessageDialog(this, "Có lỗi xảy ra khi rời nhóm!");
+        }
+    }
+});
+
+        // =========================================================================
         // 4. BỘ LẮNG NGHE SỰ KIỆN (ACTION LISTENERS)
         // =========================================================================
         itemFriend.addActionListener(e -> new FriendForm(myUsername, this));
@@ -199,6 +297,8 @@ public class MainChatForm extends JFrame {
 
         setVisible(true);
     }
+    // Xử lý chức năng "Thêm thành viên": Gõ tên -> Hiện Dropdown danh sách kèm ID -> Chọn người cần thêm
+
 
     // =========================================================================
     // 5. CÁC PHƯƠNG THỨC XỬ LÝ HIỂN THỊ ĐẶC BIỆT TRÊN JTEXTPANE
@@ -357,7 +457,10 @@ private void appendSystemAnnouncement(String text) {
     
    private void performSendMessage() {
     String msg = txtMessage.getText().trim();
-    if (msg.isEmpty()) return;
+    if (msg.isEmpty()) return; // Nếu rỗng thì dừng ngay, tránh gọi lại lần 2
+
+    // XÓA TÍCH CỰC Ô NHẬP LIỆU NGAY LẬP TỨC để tránh bấm Enter/Click bị bắn thêm lệnh 2
+    txtMessage.setText("");
 
     if (currentTarget.isEmpty()) {
         JOptionPane.showMessageDialog(this, "Vui lòng chọn đối tượng từ danh sách để chat!");
@@ -369,10 +472,6 @@ private void appendSystemAnnouncement(String text) {
     } else {
         ClientSocketManager.getInstance().sendRequest("CHAT;" + currentTarget + ";" + msg);
     }
-    
-    // In tin nhắn lên màn hình của chính mình ngay lập tức
-    appendChatMessage(myUsername, msg); 
-    txtMessage.setText("");
 }
 
     // Sử dụng cơ chế kiểm tra định dạng thông minh của ImageIO để bắt lỗi file ảnh WEBP giả danh
@@ -515,14 +614,21 @@ private void appendSystemAnnouncement(String text) {
                         String[] data = response.split(";");
                         String cmd = data[0];
                         
-                        if (cmd.equals("RECEIVE_MSG")) {
+                       if (cmd.equals("RECEIVE_MSG")) {
     String sender = data[1];
     String content = data[2];
-    
-    // Nếu tin nhắn là từ chính mình GỬI ĐI hoặc từ bạn chat đang mở -> In lên màn hình
-    if (sender.equalsIgnoreCase(myUsername) || (!isGroupChat && sender.equalsIgnoreCase(currentTarget))) {
+
+    // TRƯỜNG HỢP 1: Tin nhắn do chính mình gửi đi (Sender == myUsername)
+    // Thì chỉ hiển thị nếu đối tượng mình đang chọn chat ĐÚNG LÀ người nhận đó
+    if (sender.equalsIgnoreCase(myUsername)) {
         appendChatMessage(sender, content);
-    } else {
+    } 
+    // TRƯỜNG HỢP 2: Tin nhắn do bạn chat gửi tới
+    else if (!isGroupChat && sender.equalsIgnoreCase(currentTarget)) {
+        appendChatMessage(sender, content);
+    } 
+    // TRƯỜNG HỢP 3: Tin nhắn từ người khác nhưng không mở khung chat trực tiếp với họ
+    else {
         appendChatMessage(sender, "[Tin nhắn riêng]: " + content);
     }
 }
