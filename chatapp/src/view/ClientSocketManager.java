@@ -61,7 +61,7 @@ public void reconnect() {
             socket.close();
         }
         
-        // Khởi tạo lại kết nối mới sử dụng SERVER_IP và SERVER_PORT có sẵn của ông
+        // Khởi tạo lại kết nối mới sử dụng SERVER_IP và SERVER_PORT có sẵn 
         this.socket = new java.net.Socket(SERVER_IP, SERVER_PORT);
         this.out = new java.io.PrintWriter(socket.getOutputStream(), true);
         this.in = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream(), "UTF-8"));
