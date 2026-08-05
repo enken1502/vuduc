@@ -397,6 +397,7 @@ public class MainServer {
         public void sendMessage(String msg) {
             if (out != null) {
                 out.println(msg);
+                out.flush();
             }
         }
 
@@ -614,6 +615,85 @@ out.println("RECEIVE_MSG;" + this.username + ";" + msgContent);
                             }
                         } catch (Exception ex) {
                             System.err.println("Lỗi xử lý lệnh GROUP_CHAT: " + ex.getMessage());
+                        }
+                    }
+                    // =========================================================
+                    // 6. XỬ LÝ LẤY THÔNG TIN CÁ NHÂN (PROFILE)
+                    // =========================================================
+                    else if (action.equals("GET_PROFILE")) {
+                        int userId = Integer.parseInt(tokens[1].trim());
+                        String sql = "SELECT UserID, Username, Email, [Status] FROM Users WHERE UserID = ?";
+                        
+                        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+                             PreparedStatement ps = conn.prepareStatement(sql)) {
+                            ps.setInt(1, userId);
+                            try (ResultSet rs = ps.executeQuery()) {
+                                if (rs.next()) {
+                                    String uId = String.valueOf(rs.getInt("UserID"));
+                                    String uName = rs.getString("Username");
+                                    String uEmail = rs.getString("Email");
+                                    String uStatus = rs.getInt("Status") == 1 ? "Hoạt động" : "Bị khóa";
+                                    
+                                    // Gửi chuỗi dữ liệu profile về cho Client
+                                    out.println("PROFILE_DATA;" + uId + ";" + uName + ";" + uEmail + ";" + uStatus);
+                                    out.flush(); // <--- ÉP ĐẨY DỮ LIỆU SANG CLIENT NGAY LẬP TỨC
+                                }
+                            }
+                        } catch (Exception ex) {
+                            System.err.println("Lỗi GET_PROFILE: " + ex.getMessage());
+                        }
+                    }
+
+                    // =========================================================
+                    // 7. XỬ LÝ LẤY DANH SÁCH BẠN BÈ
+                    // =========================================================
+                    else if (action.equals("GET_FRIENDS")) {
+                        String currentUserName = tokens[1].trim();
+                        StringBuilder friendsList = new StringBuilder("FRIEND_LIST");
+                        
+                        String sql = "SELECT receiver_username FROM Friends WHERE sender_username = ? AND status = 'ACCEPTED' " +
+                                     "UNION " +
+                                     "SELECT sender_username FROM Friends WHERE receiver_username = ? AND status = 'ACCEPTED'";
+                        
+                        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+                             PreparedStatement ps = conn.prepareStatement(sql)) {
+                            ps.setString(1, currentUserName);
+                            ps.setString(2, currentUserName);
+                            try (ResultSet rs = ps.executeQuery()) {
+                                while (rs.next()) {
+                                    friendsList.append(";").append(rs.getString(1));
+                                }
+                            }
+                            out.println(friendsList.toString());
+                            out.flush(); // <--- ÉP ĐẨY DANH SÁCH BẠN BÈ SANG CLIENT
+                        } catch (Exception ex) {
+                            System.err.println("Lỗi GET_FRIENDS: " + ex.getMessage());
+                        }
+                    }
+
+                    // =========================================================
+                    // 8. XỬ LÝ LẤY DANH SÁCH NHÓM
+                    // =========================================================
+                    else if (action.equals("GET_GROUPS")) {
+                        int userId = Integer.parseInt(tokens[1].trim());
+                        StringBuilder groupsList = new StringBuilder("GROUP_LIST");
+                        
+                        String sql = "SELECT g.GroupName FROM GroupChats g " +
+                                     "JOIN GroupMembers gm ON g.GroupID = gm.GroupID " +
+                                     "WHERE gm.UserID = ?";
+                                     
+                        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+                             PreparedStatement ps = conn.prepareStatement(sql)) {
+                            ps.setInt(1, userId);
+                            try (ResultSet rs = ps.executeQuery()) {
+                                while (rs.next()) {
+                                    groupsList.append(";").append(rs.getString("GroupName"));
+                                }
+                            }
+                            out.println(groupsList.toString());
+                            out.flush(); // <--- ÉP ĐẨY DANH SÁCH NHÓM SANG CLIENT
+                        } catch (Exception ex) {
+                            System.err.println("Lỗi GET_GROUPS: " + ex.getMessage());
                         }
                     }
                     //Xử lý update profile
