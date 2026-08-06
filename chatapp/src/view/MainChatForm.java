@@ -601,7 +601,7 @@ private void appendSystemAnnouncement(String text) {
     }
 
     // =========================================================================
-    // 7. LUỒNG LIÊN TỤC LẮNG NGHE ĐỌC TIN NHẮN TỪ SERVER GỬI VỀ
+    // 7. LUỒNG LẮNG NGHE TIN NHẮN TỪ SERVER
     // =========================================================================
     public void activateListening() {
         isListening = true; 
@@ -614,53 +614,39 @@ private void appendSystemAnnouncement(String text) {
                         String[] data = response.split(";");
                         String cmd = data[0];
                         
-                       if (cmd.equals("RECEIVE_MSG")) {
-    String sender = data[1];
-    String content = data[2];
+                        if (cmd.equals("RECEIVE_MSG")) {
+                            String sender = data[1];
+                            String content = data[2];
 
-    // TRƯỜNG HỢP 1: Tin nhắn do chính mình gửi đi (Sender == myUsername)
-    // Thì chỉ hiển thị nếu đối tượng mình đang chọn chat ĐÚNG LÀ người nhận đó
-    if (sender.equalsIgnoreCase(myUsername)) {
-        appendChatMessage(sender, content);
-    } 
-    // TRƯỜNG HỢP 2: Tin nhắn do bạn chat gửi tới
-    else if (!isGroupChat && sender.equalsIgnoreCase(currentTarget)) {
-        appendChatMessage(sender, content);
-    } 
-    // TRƯỜNG HỢP 3: Tin nhắn từ người khác nhưng không mở khung chat trực tiếp với họ
-    else {
-        appendChatMessage(sender, "[Tin nhắn riêng]: " + content);
-    }
-}
+                            if (sender.equalsIgnoreCase(myUsername)) {
+                                appendChatMessage(sender, content);
+                            } else if (!isGroupChat && sender.equalsIgnoreCase(currentTarget)) {
+                                appendChatMessage(sender, content);
+                            } else {
+                                appendChatMessage(sender, "[Tin nhắn riêng]: " + content);
+                            }
+                        }
                         else if (cmd.equals("SEND_MSG_FAILED")) {
-                        String errorMsg = (data.length > 1) ? data[1] : "Tài khoản không tồn tại";
-                        
-                        // Dùng SwingUtilities.invokeLater để hiển thị Popup mượt mà không làm đơ UI
-                        SwingUtilities.invokeLater(() -> {
-                            JOptionPane.showMessageDialog(this, errorMsg, "Thông báo", JOptionPane.WARNING_MESSAGE);
-                        });
-                    }
-                        // Trong hàm activateListening() của MainChatForm.java:
+                            String errorMsg = (data.length > 1) ? data[1] : "Tài khoản không tồn tại";
+                            SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(this, errorMsg, "Thông báo", JOptionPane.WARNING_MESSAGE);
+                            });
+                        }
                         else if (cmd.equals("ANNOUNCEMENT")) {
-                        String annText = data.length > 1 ? data[1] : "";      
+                            String annText = data.length > 1 ? data[1] : "";      
                             appendSystemAnnouncement(annText);
                         }
-                        // Trong hàm activateListening() của MainChatForm.java:
-else if (cmd.equals("FORCE_LOGOUT")) {
-    String reason = (data.length > 1) ? data[1] : "Tài khoản của bạn đã bị khóa!";
-    
-    // 1. Tắt cờ lắng nghe ngay lập tức
-    isListening = false; 
-    
-    // 2. Đóng kết nối socket hiện tại để xả luồng cũ
-    
-    SwingUtilities.invokeLater(() -> {
-        JOptionPane.showMessageDialog(this, reason, "Thông báo hệ thống", JOptionPane.ERROR_MESSAGE);
-        this.dispose(); // Tắt MainChatForm
-        new LoginForm(); // Mở LoginForm
-    });
-    break; // Thoát vòng lặp while của Thread
-}
+                        else if (cmd.equals("FORCE_LOGOUT")) {
+                            String reason = (data.length > 1) ? data[1] : "Tài khoản của bạn đã bị khóa!";
+                            isListening = false; 
+                            
+                            SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(this, reason, "Thông báo hệ thống", JOptionPane.ERROR_MESSAGE);
+                                this.dispose();
+                                new LoginForm();
+                            });
+                            break;
+                        }
                         else if (cmd.equals("RECEIVE_GROUP_MSG")) {
                             String groupName = data[1];
                             String sender = data[2];
@@ -673,6 +659,27 @@ else if (cmd.equals("FORCE_LOGOUT")) {
                             } else {
                                 appendChatMessage(sender, "[Nhóm " + groupName + "]: " + content);
                             }
+                        }
+                        // 🌟 Xử lý kết quả trả về từ lệnh Admin
+                        else if (cmd.equals("ADMIN_STATS_RESULT")) {
+                            String total = data.length > 1 ? data[1] : "0";
+                            String online = data.length > 2 ? data[2] : "0";
+                            String list = data.length > 3 ? data[3] : "";
+                            
+                            String statsMsg = "=== THỐNG KÊ HỆ THỐNG ===\n" +
+                                              "📊 Tổng số tài khoản: " + total + "\n" +
+                                              "🟢 Đang Online: " + online + "\n" +
+                                              "👤 Danh sách Online: " + list;
+                            
+                            SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(this, statsMsg, "Thống kê Server", JOptionPane.INFORMATION_MESSAGE);
+                            });
+                        }
+                        else if (cmd.equals("ADMIN_MSG")) {
+                            String msg = data.length > 1 ? data[1] : "";
+                            SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(this, msg, "Thông báo Admin", JOptionPane.INFORMATION_MESSAGE);
+                            });
                         }
                     } else {
                         break;
