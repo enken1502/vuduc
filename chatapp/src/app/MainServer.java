@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Connection;
@@ -36,18 +37,26 @@ public class MainServer {
         
         if (testDatabaseConnection()) {
             new Thread(MainServer::handleServerConsoleCommands).start();
-            try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-                System.out.println("Server đang chạy và lắng nghe tại cổng: " + PORT);
-                System.out.println("💡 Nhập 'help' để xem các lệnh điều khiển Server.");
-                while (true) {
-                    Socket socket = serverSocket.accept();
-                    ClientHandler clientHandler = new ClientHandler(socket);
-                    clients.add(clientHandler);
-                    new Thread(clientHandler).start();
-                }
-            } catch (Exception e) {
-                System.err.println("Lỗi Server khởi động thất bại: " + e.getMessage());
-            }
+           try {
+    // Bind ServerSocket tới IP 0.0.0.0 để lắng nghe từ TẤT CẢ card mạng (bao gồm ZeroTier/LAN/Wi-Fi)
+    InetAddress bindAddr = InetAddress.getByName("0.0.0.0");
+    
+    try (ServerSocket serverSocket = new ServerSocket(PORT, 50, bindAddr)) {
+        System.out.println("Server đang chạy và lắng nghe tại cổng " + PORT + " (Bind: 0.0.0.0)");
+        System.out.println("💡 Nhập 'help' để xem các lệnh điều khiển Server.");
+        
+        while (true) {
+            Socket socket = serverSocket.accept();
+            System.out.println("🔌 Client kết nối từ: " + socket.getInetAddress().getHostAddress());
+            
+            ClientHandler clientHandler = new ClientHandler(socket);
+            clients.add(clientHandler);
+            new Thread(clientHandler).start();
+        }
+    }
+} catch (Exception e) {
+    System.err.println("Lỗi Server khởi động thất bại: " + e.getMessage());
+}
         } else {
             System.err.println("Dừng Server do không thể kết nối Database!");
         }
