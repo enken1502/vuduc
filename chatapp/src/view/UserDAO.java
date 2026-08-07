@@ -5,7 +5,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 
 public class UserDAO {
-    private static final String DB_URL = "jdbc:sqlserver://127.0.0.1:1433;databaseName=ChatDB;encrypt=true;trustServerCertificate=true;";
+    private static final String DB_URL = "jdbc:sqlserver://10.198.63.56:1433;databaseName=ChatDB;encrypt=true;trustServerCertificate=true;";
     private static final String DB_USER = "minh";
     private static final String DB_PASS = "12345678";
 

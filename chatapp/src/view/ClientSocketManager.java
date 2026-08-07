@@ -11,8 +11,9 @@ public class ClientSocketManager {
     private PrintWriter out;
     private BufferedReader in;
     
-private static final String SERVER_IP = "127.0.0.1"; 
-private static final int SERVER_PORT = 9999;
+// Sửa dòng này trong ClientSocketManager.java
+private static final String SERVER_IP = "10.198.63.56"; // <--- Thay IP ZeroTier máy Server của bạn vào đây
+private static final int SERVER_PORT = 9999; 
 
     private ClientSocketManager() {
         try {

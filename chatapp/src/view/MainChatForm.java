@@ -567,7 +567,7 @@ private void appendSystemAnnouncement(String text) {
 
     public void loadFriendAndGroupData() {
         friendModel.clear();
-        for (String f : friendDAO.getAcceptedFriends(myUsername)) {
+        for (String f : friendDAO.getAcceptedFriends(myUsername)) { 
             friendModel.addElement(f);
         }
 
