@@ -364,20 +364,20 @@ private void appendSystemAnnouncement(String text) {
             String stickerName = content.substring(9, content.length() - 1);
             insertSticker(stickerName); 
         } 
-        // 2. XỬ LÝ ĐỊNH DẠNG FILE (CHUYỂN THÀNH NÚT DOWNLOAD)
+        // 2. XỬ LÝ ĐỊNH DẠNG FILE 
         else if (content.startsWith("[FILE_") && content.contains("_DATA_") && content.endsWith("]")) {
             // Bóc tách lấy tên file và chuỗi dữ liệu Base64
             int dataIndex = content.indexOf("_DATA_");
             String fileName = content.substring(6, dataIndex);
             String base64Data = content.substring(dataIndex + 6, content.length() - 1);
             
-            // Tạo một nút bấm tải file giao diện phẳng nhỏ gọn
+            // Tạo một nút bấm tải file
             JButton btnDownload = new JButton("📁 Tải file: " + fileName);
             btnDownload.setFont(new Font("Arial", Font.PLAIN, 12));
             btnDownload.setCursor(new Cursor(Cursor.HAND_CURSOR));
             btnDownload.setBackground(new Color(240, 240, 240));
             
-            // Bắt sự kiện khi người nhận click vào nút để lưu file về máy
+            //click vào nút để lưu file về máy
             btnDownload.addActionListener(e -> {
                 JFileChooser fileChooser = new JFileChooser();
                 fileChooser.setSelectedFile(new File(fileName)); // Gợi ý sẵn tên file gốc

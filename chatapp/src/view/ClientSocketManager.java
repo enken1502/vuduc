@@ -12,7 +12,7 @@ public class ClientSocketManager {
     private BufferedReader in;
     
 // Sửa dòng này trong ClientSocketManager.java
-private static final String SERVER_IP = "10.198.63.56"; // <--- Thay IP ZeroTier máy Server của bạn vào đây
+private static final String SERVER_IP = "10.18.235.56";
 private static final int SERVER_PORT = 9999; 
 
     private ClientSocketManager() {
