@@ -37,12 +37,12 @@ public class MainServer {
         
         if (testDatabaseConnection()) {
             new Thread(MainServer::handleServerConsoleCommands).start();
-           try {
-    // Bind ServerSocket tới IP 0.0.0.0 để lắng nghe từ TẤT CẢ card mạng (bao gồm ZeroTier/LAN/Wi-Fi)
+        try {
+
     InetAddress bindAddr = InetAddress.getByName("0.0.0.0");
     
     try (ServerSocket serverSocket = new ServerSocket(PORT, 50, bindAddr)) {
-        System.out.println("Server đang chạy và lắng nghe tại cổng " + PORT + " (Bind: 0.0.0.0)");
+        System.out.println("Server đang chạy và lắng nghe tại cổng " + PORT );
         System.out.println("💡 Nhập 'help' để xem các lệnh điều khiển Server.");
         
         while (true) {
@@ -70,8 +70,6 @@ public class MainServer {
             return false;
         }
     }
-
-   
 
     // =========================================================================
     // HỆ THỐNG GHI LOG VÀ TIỆN ÍCH SERVER
@@ -151,8 +149,8 @@ public class MainServer {
         int totalUsers = 0;
         String sql = "SELECT COUNT(*) AS Total FROM Users";
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 totalUsers = rs.getInt("Total");
             }
@@ -180,7 +178,7 @@ public class MainServer {
     if (username == null) return false;
     String sql = "SELECT [Status] FROM Users WHERE Username = ?";
     try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
-         PreparedStatement ps = conn.prepareStatement(sql)) {
+        PreparedStatement ps = conn.prepareStatement(sql)) {
         ps.setString(1, username);
         try (ResultSet rs = ps.executeQuery()) {
             if (rs.next()) return rs.getInt("Status") == 1;
@@ -201,7 +199,7 @@ public class MainServer {
         return count;
     }
 
-   private static void broadcastSystemAnnouncement(String text) {
+private static void broadcastSystemAnnouncement(String text) {
     // Định dạng gói tin riêng gửi về Client
     String msg = "ANNOUNCEMENT;" + text;
     synchronized (clients) {
@@ -212,7 +210,7 @@ public class MainServer {
     logActivity("ANNOUNCEMENT", "Gửi thông báo: " + text);
 }
 
-   private static void blockUser(String input) {
+private static void blockUser(String input) {
     if (input == null || input.trim().isEmpty()) return;
     input = input.trim();
 
@@ -275,7 +273,7 @@ public class MainServer {
                 // Kích người dùng ra khỏi Server ngay lập tức
                 synchronized (clients) {
                     for (ClientHandler client : clients) {
-                        // So sánh theo Username hoặc theo ID (nếu ClientHandler có lưu userId)
+                        // So sánh theo Username hoặc theo ID
                         if (client.username != null && client.username.equalsIgnoreCase(targetUsername)) {
                             client.sendMessage("FORCE_LOGOUT;Tài khoản của bạn đã bị KHÓA bởi Admin!");
 
